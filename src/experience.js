@@ -370,9 +370,9 @@ export function initExperience() {
           from: { y: 14, opacity: 0 },
           to: { duration: 0.36, stagger: 0.05 }
         });
-        // draw connector after cards settle so dots align
+        // paint the rail once cards settle (positions known)
         enterTl.add(() => {
-          requestAnimationFrame(() => playTimelineSpine(sc));
+          requestAnimationFrame(() => paintTimelineRail());
         }, 0.42);
       } else if (sc.id === "scene-map") {
         const stage = sc.querySelector(".map-stage");
@@ -465,10 +465,7 @@ export function initExperience() {
       const sc = scenes[i];
       if (!sc) return;
 
-      // stop timeline loop when leaving that scene (defined later; safe no-op until then)
-      if (sc.id !== "scene-timeline" && typeof stopTimelineSpine === "function") {
-        stopTimelineSpine();
-      }
+      // no-op kept for compatibility
 
       if (sc.id === "scene-hero") {
         const v = sc.querySelector("video");
@@ -476,6 +473,7 @@ export function initExperience() {
       }
 
       if (sc.id === "scene-map") startMap();
+      if (sc.id === "scene-timeline") requestAnimationFrame(() => paintTimelineRail());
       if (sc.id === "scene-letters") {
         mountLettersGrid();
         stopLetters3D();
@@ -495,9 +493,9 @@ export function initExperience() {
 
       playSceneReveal(sc);
 
-      // reduced-motion / no-gsap: still draw the timeline connector
-      if (sc.id === "scene-timeline" && (reduced || !window.gsap)) {
-        requestAnimationFrame(() => playTimelineSpine(sc));
+      // reduced-motion / no-gsap: still paint the rail
+      if (sc.id === "scene-timeline") {
+        requestAnimationFrame(() => paintTimelineRail());
       }
     }
 
@@ -647,287 +645,83 @@ export function initExperience() {
       parent.addEventListener("mouseleave", () => v.pause());
     });
 
-    /* ---------- Timeline: looping line + pink sparks that travel all points ---------- */
-    let tlSpineTween = null;
-    let tlSparkTweens = [];
-    let tlSpinePts = [];
-    let tlSpineLooping = false;
-    let tlSpineLayout = null;
+    /* ---------- Timeline: trilho reto preenchido conforme o scroll ---------- */
+    let tlRailRaf = 0;
 
-    function stopTimelineSpine() {
-      tlSpineLooping = false;
-      if (tlSpineTween) {
-        tlSpineTween.kill();
-        tlSpineTween = null;
-      }
-      tlSparkTweens.forEach((t) => { try { t.kill(); } catch (_) {} });
-      tlSparkTweens = [];
-      const sparks = document.getElementById("tlSpineSparks");
-      if (sparks) sparks.innerHTML = "";
-      const head = document.getElementById("tlSpineHead");
-      if (head) head.style.opacity = "0";
-    }
+    function clamp01(v) { return Math.min(Math.max(v, 0), 1); }
 
-    function layoutTimelineSpine(sc, keepProgress) {
-      const scope = sc || document.getElementById("scene-timeline");
-      if (!scope) return null;
-      const track = scope.querySelector("#timelineTrack") || document.getElementById("timelineTrack");
-      const svg = scope.querySelector("#tlSpine") || document.getElementById("tlSpine");
-      const pathTrack = scope.querySelector("#tlSpineTrack") || document.getElementById("tlSpineTrack");
-      const pathProg = scope.querySelector("#tlSpineProgress") || document.getElementById("tlSpineProgress");
-      const head = scope.querySelector("#tlSpineHead") || document.getElementById("tlSpineHead");
-      if (!track || !svg || !pathTrack || !pathProg) return null;
+    function paintTimelineRail() {
+      tlRailRaf = 0;
 
-      const nodes = Array.from(scope.querySelectorAll(".tl-node"));
-      const tr = track.getBoundingClientRect();
+      const track = document.getElementById("timelineTrack");
+      const rail = document.getElementById("tlRail");
+      const fill = document.getElementById("tlRailFill");
+      if (!track || !rail || !fill) return;
+
+      const nodes = Array.from(track.querySelectorAll(".tl-node"));
+      if (!nodes.length) return;
+
+      const railRect = rail.getBoundingClientRect();
+      const railH = Math.max(railRect.height, 1);
+      const trackRect = track.getBoundingClientRect();
+      const anchor = trackRect.top + track.clientHeight * 0.42;
+      const maxScroll = Math.max(track.scrollHeight - track.clientHeight, 0);
       const scrollTop = track.scrollTop;
-      const scrollLeft = track.scrollLeft;
-      const w = Math.max(track.clientWidth, 1);
-      const h = Math.max(track.scrollHeight, track.clientHeight, 1);
 
-      svg.setAttribute("viewBox", "0 0 " + w + " " + h);
-      svg.setAttribute("width", String(w));
-      svg.setAttribute("height", String(h));
-      svg.style.width = w + "px";
-      svg.style.height = h + "px";
+      const marks = nodes.map((node) => {
+        const r = node.getBoundingClientRect();
+        const offset = Math.min(r.height * 0.3, 42);
+        const markerScreen = r.top + offset;
+        const y = markerScreen - railRect.top;
+        const cross = scrollTop + (markerScreen - anchor);
+        return { node: node, ratio: clamp01(y / railH), cross: cross };
+      });
 
-      const pts = nodes.map((node) => {
-        const dot = node.querySelector(".tl-dot") || node.querySelector(".tl-dot-col");
-        const r = (dot || node).getBoundingClientRect();
-        return {
-          node: node,
-          x: r.left - tr.left + scrollLeft + r.width / 2,
-          y: r.top - tr.top + scrollTop + r.height / 2
-        };
-      }).filter((p) => isFinite(p.x) && isFinite(p.y));
+      const lastCross = marks[marks.length - 1].cross;
+      const scale = lastCross > maxScroll && lastCross > 0 ? maxScroll / lastCross : 1;
+      marks.forEach((m) => { m.at = clamp01(m.cross * scale); });
+      marks.forEach((m) => { m.at = Math.min(Math.max(m.cross * scale, 0), maxScroll); });
 
-      tlSpinePts = pts;
-      if (!pts.length) {
-        pathTrack.setAttribute("d", "");
-        pathProg.setAttribute("d", "");
-        return null;
-      }
-
-      let d = "M " + pts[0].x.toFixed(1) + " " + pts[0].y.toFixed(1);
-      if (pts.length === 1) {
-        d += " L " + pts[0].x.toFixed(1) + " " + (pts[0].y + 1).toFixed(1);
+      let p;
+      if (maxScroll < 1) {
+        p = marks[marks.length - 1].ratio;
       } else {
-        for (let i = 1; i < pts.length; i++) {
-          const prev = pts[i - 1];
-          const cur = pts[i];
-          const midY = (prev.y + cur.y) / 2;
-          // soft S-curve between consecutive dots (reads as one continuous line)
-          d += " C " +
-            prev.x.toFixed(1) + " " + midY.toFixed(1) + ", " +
-            cur.x.toFixed(1) + " " + midY.toFixed(1) + ", " +
-            cur.x.toFixed(1) + " " + cur.y.toFixed(1);
+        let idx = 0;
+        for (let i = 0; i < marks.length; i++) {
+          if (marks[i].at <= scrollTop + 0.5) idx = i;
+        }
+        if (idx >= marks.length - 1) {
+          p = marks[marks.length - 1].ratio;
+        } else {
+          const from = marks[idx];
+          const to = marks[idx + 1];
+          const span = to.at - from.at;
+          const u = span > 1 ? (scrollTop - from.at) / span : 1;
+          p = from.ratio + (to.ratio - from.ratio) * clamp01(u);
         }
       }
+      p = clamp01(p);
 
-      pathTrack.setAttribute("d", d);
-      pathProg.setAttribute("d", d);
+      fill.style.transform = "scaleY(" + p.toFixed(4) + ")";
 
-      let len = 0;
-      try { len = pathProg.getTotalLength() || 0; } catch (_) { len = 0; }
-      if (len < 1) len = 1;
-
-      pathProg.style.strokeDasharray = String(len);
-      if (!keepProgress) {
-        pathProg.style.strokeDashoffset = String(len);
-        if (head) {
-          head.setAttribute("cx", pts[0].x);
-          head.setAttribute("cy", pts[0].y);
-          head.style.opacity = "0";
-        }
-      }
-
-      const layout = { pathProg: pathProg, head: head, pts: pts, len: len, nodes: nodes, pathTrack: pathTrack };
-      tlSpineLayout = layout;
-      return layout;
-    }
-
-    function lightNodesAlongProgress(nodes, p, litCountRef) {
-      const targetLit = Math.min(
-        nodes.length,
-        1 + Math.floor(p * (nodes.length - 0.001))
-      );
-      while (litCountRef.count < targetLit) {
-        if (nodes[litCountRef.count]) nodes[litCountRef.count].classList.add("is-lit");
-        litCountRef.count++;
-      }
-    }
-
-    function spawnTimelineSparks(layout) {
-      const g = document.getElementById("tlSpineSparks");
-      if (!g || !layout || !layout.pathProg) return;
-      g.innerHTML = "";
-      tlSparkTweens.forEach((t) => { try { t.kill(); } catch (_) {} });
-      tlSparkTweens = [];
-
-      if (reduced || !window.gsap) return;
-
-      const n = layout.pts.length;
-      // 2 pink sparks leave each memory and keep circulating through all points
-      const sparksPerNode = 2;
-      const total = Math.max(n * sparksPerNode, 6);
-
-      for (let i = 0; i < total; i++) {
-        const startNode = i % n;
-        const phase = n <= 1 ? 0 : startNode / (n - 1);
-        const outer = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        outer.setAttribute("class", "tl-spine-spark");
-        outer.setAttribute("r", String(3.1 + (i % 3) * 0.6));
-        outer.setAttribute("cx", "0");
-        outer.setAttribute("cy", "0");
-        const core = document.createElementNS("http://www.w3.org/2000/svg", "circle");
-        core.setAttribute("class", "tl-spine-spark-core");
-        core.setAttribute("r", "1.3");
-        core.setAttribute("cx", "0");
-        core.setAttribute("cy", "0");
-        g.appendChild(outer);
-        g.appendChild(core);
-
-        const state = { t: 0 };
-        const dur = 3.6 + (i % 4) * 0.55;
-        const delay = (i * 0.32) % 2.6;
-
-        const place = () => {
-          const live = tlSpineLayout || layout;
-          const path = live.pathProg;
-          const len = live.len || 1;
-          // phase locks birth at a memory node; t loops 0→1 along the full spine
-          const p = (phase + state.t) % 1;
-          try {
-            const pt = path.getPointAtLength(len * p);
-            outer.setAttribute("cx", pt.x);
-            outer.setAttribute("cy", pt.y);
-            core.setAttribute("cx", pt.x);
-            core.setAttribute("cy", pt.y);
-          } catch (_) {}
-        };
-        place();
-        gsap.set(outer, { opacity: 0.92 });
-        gsap.set(core, { opacity: 0.88 });
-
-        const tw = gsap.to(state, {
-          t: 1,
-          duration: dur,
-          delay: delay,
-          ease: "none",
-          repeat: -1,
-          onUpdate: place
-        });
-        // Gentle pulse so sparks feel alive while traveling
-        const pulse = gsap.to(outer, {
-          attr: { r: 3.1 + (i % 3) * 0.6 + 1.1 },
-          duration: 0.7 + (i % 3) * 0.12,
-          yoyo: true,
-          repeat: -1,
-          ease: "sine.inOut",
-          delay: delay
-        });
-        tlSparkTweens.push(tw, pulse);
-      }
-    }
-
-    function playTimelineSpine(sc) {
-      stopTimelineSpine();
-      tlSpineLooping = true;
-
-      const layout = layoutTimelineSpine(sc, false);
-      if (!layout) return;
-
-      const nodes = layout.nodes;
-      nodes.forEach((n) => n.classList.remove("is-lit"));
-
-      if (reduced || !window.gsap) {
-        layout.pathProg.style.strokeDashoffset = "0";
-        nodes.forEach((n) => n.classList.add("is-lit"));
-        if (layout.head && layout.pts.length) {
-          const last = layout.pts[layout.pts.length - 1];
-          layout.head.setAttribute("cx", last.x);
-          layout.head.setAttribute("cy", last.y);
-          layout.head.style.opacity = "0";
-        }
-        return;
-      }
-
-      const state = { p: 0 };
-      const litRef = { count: 0 };
-      const loopDur = Math.min(3.2, 0.7 + nodes.length * 0.42);
-
-      if (layout.head) layout.head.style.opacity = "1";
-      if (nodes[0]) {
-        nodes[0].classList.add("is-lit");
-        litRef.count = 1;
-      }
-
-      // Pink travelers leave each point and sweep the whole timeline
-      spawnTimelineSparks(layout);
-
-      tlSpineTween = gsap.to(state, {
-        p: 1,
-        duration: loopDur,
-        ease: "power2.inOut",
-        repeat: -1,
-        repeatDelay: 0.55,
-        onUpdate: function () {
-          const live = tlSpineLayout || layout;
-          const len = live.len || layout.len;
-          const path = live.pathProg || layout.pathProg;
-          const offset = len * (1 - state.p);
-          path.style.strokeDashoffset = String(offset);
-          try {
-            const pt = path.getPointAtLength(len * state.p);
-            if (layout.head || live.head) {
-              const h = live.head || layout.head;
-              h.setAttribute("cx", pt.x);
-              h.setAttribute("cy", pt.y);
-              h.style.opacity = "1";
-            }
-          } catch (_) {}
-          lightNodesAlongProgress(nodes, state.p, litRef);
-        },
-        onRepeat: function () {
-          // Loop: reset stroke + re-light points from the start
-          litRef.count = 0;
-          nodes.forEach((n) => n.classList.remove("is-lit"));
-          if (nodes[0]) {
-            nodes[0].classList.add("is-lit");
-            litRef.count = 1;
-          }
-          state.p = 0;
-          const live = tlSpineLayout || layout;
-          live.pathProg.style.strokeDashoffset = String(live.len);
-          if (live.head && live.pts[0]) {
-            live.head.setAttribute("cx", live.pts[0].x);
-            live.head.setAttribute("cy", live.pts[0].y);
-            live.head.style.opacity = "1";
-          }
-        }
+      let active = 0;
+      marks.forEach((m, i) => { if (m.ratio <= p + 0.004) active = i; });
+      marks.forEach((m, i) => {
+        const lit = i <= active;
+        if (m.node.classList.contains("is-lit") !== lit) m.node.classList.toggle("is-lit", lit);
       });
     }
 
-    // Keep the connector aligned when the track resizes / opens media
-    let tlResizeTimer = null;
-    function scheduleTimelineLayout() {
-      clearTimeout(tlResizeTimer);
-      tlResizeTimer = setTimeout(() => {
-        const sc = document.getElementById("scene-timeline");
-        if (!sc || !sc.classList.contains("active")) return;
-        const wasLooping = tlSpineLooping;
-        const layout = layoutTimelineSpine(sc, wasLooping);
-        if (!layout) return;
-        if (wasLooping) {
-          // rebuild sparks on new geometry; line tween keeps running via tlSpineLayout
-          spawnTimelineSparks(layout);
-        } else {
-          layout.pathProg.style.strokeDashoffset = "0";
-          layout.nodes.forEach((n) => n.classList.add("is-lit"));
-        }
-      }, 80);
+    function updateTimelineRail() {
+      if (tlRailRaf) return;
+      tlRailRaf = requestAnimationFrame(paintTimelineRail);
     }
-    window.addEventListener("resize", scheduleTimelineLayout);
+
+    const trackEl = document.getElementById("timelineTrack");
+    if (trackEl) trackEl.addEventListener("scroll", updateTimelineRail, { passive: true });
+    window.addEventListener("resize", updateTimelineRail);
+
+
 
     const setTlHint = (n, open) => {
       const h = n.querySelector(".tl-hint");
@@ -968,7 +762,7 @@ export function initExperience() {
             }
           }
         }
-        scheduleTimelineLayout();
+        updateTimelineRail();
       });
     });
 

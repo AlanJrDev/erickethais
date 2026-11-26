@@ -317,10 +317,10 @@
     .hero-copy .title { max-width: 14ch; }
     .hero-copy .lede { max-width: 36ch; text-align: center; }
 
-    /* TIMELINE — vertical curved path + reveal on click (responsive) */
+    /* TIMELINE - trilho reto + preenchimento guiado pelo scroll */
     .timeline-wrap {
       width: 100%;
-      max-width: min(820px, 100%);
+      max-width: min(860px, 100%);
       margin-inline: auto;
       min-width: 0;
       display: flex;
@@ -339,8 +339,8 @@
       overscroll-behavior: contain;
       scrollbar-width: thin;
       scrollbar-color: var(--primary) transparent;
-      mask-image: linear-gradient(180deg, transparent 0%, #000 12px, #000 calc(100% - 28px), transparent 100%);
-      -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 12px, #000 calc(100% - 28px), transparent 100%);
+      mask-image: linear-gradient(180deg, transparent 0%, #000 14px, #000 calc(100% - 32px), transparent 100%);
+      -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 14px, #000 calc(100% - 32px), transparent 100%);
       touch-action: pan-y;
     }
     .timeline-track::-webkit-scrollbar { width: 3px; }
@@ -348,118 +348,83 @@
       background: rgba(255, 45, 85, 0.55);
       border-radius: 99px;
     }
-    .tl-spine {
-      position: absolute;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      pointer-events: none;
-      z-index: 0;
-      overflow: visible;
-    }
-    .tl-spine .tl-spine-track {
-      fill: none;
-      stroke: rgba(255, 255, 255, 0.1);
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-    .tl-spine .tl-spine-progress {
-      fill: none;
-      stroke: url(#tlGrad);
-      stroke-width: 2.6;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-      filter: drop-shadow(0 0 8px rgba(255,45,85,0.4));
-      stroke-dasharray: 1;
-      stroke-dashoffset: 1;
-    }
-    .tl-spine .tl-spine-head {
-      fill: var(--primary);
-      opacity: 0;
-      filter: drop-shadow(0 0 10px rgba(255,45,85,0.85));
-    }
-    .tl-spine .tl-spine-sparks {
-      pointer-events: none;
-    }
-    .tl-spine .tl-spine-spark {
-      fill: #FF2D55;
-      opacity: 0;
-      filter: drop-shadow(0 0 7px rgba(255, 45, 85, 0.95));
-    }
-    .tl-spine .tl-spine-spark-core {
-      fill: #fff;
-      opacity: 0;
-      pointer-events: none;
-    }
-    @keyframes tlDotPop {
-      0% { transform: scale(0.7); }
-      55% { transform: scale(1.35); }
-      100% { transform: scale(1); }
-    }
     .tl-list {
+      --tl-gutter: clamp(20px, 4vw, 34px);
       list-style: none;
       position: relative;
       z-index: 1;
       display: flex;
       flex-direction: column;
-      gap: clamp(20px, 3.6vh, 34px);
+      gap: clamp(22px, 4vh, 40px);
       margin: 0;
-      padding: 4px 0 12px;
+      padding: 4px 0 16px;
       width: 100%;
       min-width: 0;
     }
+    .tl-rail {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 50%;
+      width: 2px;
+      transform: translateX(-50%);
+      z-index: 0;
+      pointer-events: none;
+    }
+    .tl-rail-base {
+      position: absolute;
+      inset: 0;
+      background: rgba(255, 255, 255, 0.09);
+      border-radius: 999px;
+    }
+    .tl-rail-fill {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #FF2D55 0%, #FF6B9E 46%, #FFD166 100%);
+      transform: scaleY(0);
+      transform-origin: 50% 0;
+      box-shadow: 0 0 14px rgba(255, 45, 85, 0.55);
+      will-change: transform;
+    }
     .tl-node {
-      --shift: 0px;
       position: relative;
       display: grid;
-      grid-template-columns: minmax(0, 1fr) 22px minmax(0, 1fr);
-      column-gap: clamp(12px, 2.2vw, 22px);
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+      column-gap: calc(var(--tl-gutter) * 2);
       align-items: start;
       width: 100%;
       min-width: 0;
-      transform: translateX(var(--shift));
-      transition: transform var(--dur-ui) var(--ease-out);
     }
-    .tl-node:nth-child(1) { --shift: -12px; }
-    .tl-node:nth-child(2) { --shift: 14px; }
-    .tl-node:nth-child(3) { --shift: -16px; }
-    .tl-node:nth-child(4) { --shift: 16px; }
-    .tl-node:nth-child(5) { --shift: -12px; }
-    .tl-node:nth-child(6) { --shift: 10px; }
-
-    .tl-main { min-width: 0; max-width: 100%; }
-    .tl-dot-col {
-      grid-column: 2;
-      grid-row: 1;
-      display: flex;
-      justify-content: center;
-      padding-top: 8px;
-      z-index: 2;
+    .tl-node::before {
+      content: "";
+      position: absolute;
+      top: 13px;
+      height: 1px;
+      width: calc(var(--tl-gutter) - 2px);
+      background: rgba(255, 255, 255, 0.16);
+      transition: background var(--dur-ui) var(--ease-out), box-shadow var(--dur-ui) var(--ease-out), opacity var(--dur-ui) var(--ease-out);
     }
-    .tl-dot {
-      width: 16px; height: 16px; border-radius: 50%;
-      background: radial-gradient(circle at 35% 30%, #fff 0%, var(--secondary) 35%, var(--primary) 100%);
-      box-shadow: 0 0 0 3px rgba(5,5,5,0.85), 0 0 0 5px rgba(255,45,85,0.22), 0 0 12px rgba(255,45,85,0.3);
-      flex-shrink: 0;
-      opacity: 0.32;
-      transform: scale(0.82);
-      transition:
-        opacity 0.35s var(--ease-out),
-        transform 0.35s var(--ease-out),
-        box-shadow 0.35s var(--ease-out);
+    .tl-node:nth-child(odd)::before { right: 50%; }
+    .tl-node:nth-child(even)::before { left: 50%; }
+    .tl-main {
+      min-width: 0;
+      max-width: 100%;
+      opacity: 0.62;
+      transition: opacity var(--dur-ui) var(--ease-out);
     }
-    .tl-node.is-lit .tl-dot,
-    .tl-node.is-open .tl-dot,
-    .tl-node:hover .tl-dot {
-      opacity: 1;
-      transform: scale(1.18);
-      box-shadow: 0 0 0 3px rgba(5,5,5,0.85), 0 0 0 6px rgba(255,45,85,0.5), 0 0 24px rgba(255,45,85,0.75);
+    .tl-node.is-lit .tl-main { opacity: 1; }
+    .tl-node.is-lit::before {
+      background: rgba(255, 107, 158, 0.9);
+      box-shadow: 0 0 12px rgba(255, 45, 85, 0.65);
     }
-    .tl-node.is-lit .tl-dot {
-      animation: tlDotPop 0.45s var(--ease-out);
-    }
+    .tl-node:nth-child(odd) .tl-main { grid-column: 1; grid-row: 1; text-align: right; }
+    .tl-node:nth-child(even) .tl-main { grid-column: 2; grid-row: 1; text-align: left; }
+    .tl-node:nth-child(odd) .tl-reveal { grid-column: 2; grid-row: 1; justify-self: start; }
+    .tl-node:nth-child(even) .tl-reveal { grid-column: 1; grid-row: 1; justify-self: end; }
 
     .tl-hit {
       display: block; width: 100%; text-align: inherit;
@@ -510,12 +475,6 @@
     .tl-node.is-open .tl-hint { color: var(--accent); }
     .tl-node.is-open .tl-hint::before { background: var(--accent); }
 
-    /* odd: title left, reveal right | even: reveal left, title right */
-    .tl-node:nth-child(odd) .tl-main { grid-column: 1; grid-row: 1; text-align: right; }
-    .tl-node:nth-child(odd) .tl-reveal { grid-column: 3; grid-row: 1; justify-self: start; }
-    .tl-node:nth-child(even) .tl-main { grid-column: 3; grid-row: 1; text-align: left; }
-    .tl-node:nth-child(even) .tl-reveal { grid-column: 1; grid-row: 1; justify-self: end; }
-
     .tl-reveal {
       width: min(190px, 100%);
       max-width: 100%;
@@ -553,7 +512,6 @@
       .timeline-wrap { max-width: 100%; }
       .timeline-track { padding-inline: clamp(6px, 1.5vw, 14px); max-height: min(54vh, 500px); }
       .tl-node {
-        --shift: 0px !important;
         column-gap: 14px;
       }
       .tl-reveal { width: min(160px, 100%); }
@@ -568,52 +526,33 @@
       }
       .timeline-track {
         max-height: min(62vh, 560px);
-        padding: 4px 2px 32px 0;
+        padding: 4px 0 32px 0;
         mask-image: linear-gradient(180deg, transparent 0%, #000 10px, #000 calc(100% - 22px), transparent 100%);
         -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 10px, #000 calc(100% - 22px), transparent 100%);
       }
       .tl-list {
+        --tl-gutter: 18px;
         gap: 12px;
         padding: 2px 0 8px;
       }
-      .tl-spine .tl-spine-track {
-        stroke-width: 1.75;
-        stroke: rgba(255, 255, 255, 0.12);
-      }
-      .tl-spine .tl-spine-progress {
-        stroke-width: 2.2;
-        filter: drop-shadow(0 0 6px rgba(255,45,85,0.32));
+      .tl-rail {
+        left: 0;
+        transform: none;
       }
       .tl-node {
-        grid-template-columns: 30px minmax(0, 1fr);
-        --shift: 0px !important;
-        column-gap: 10px;
-        align-items: stretch;
+        grid-template-columns: minmax(0, 1fr);
+        padding-left: 30px;
+        column-gap: 0;
       }
-      .tl-dot-col {
-        grid-column: 1;
-        grid-row: 1 / span 2;
-        padding-top: 22px;
-        align-items: flex-start;
-      }
-      .tl-dot {
-        width: 13px;
-        height: 13px;
-        box-shadow:
-          0 0 0 3px rgba(5,5,5,0.92),
-          0 0 0 5px rgba(255,45,85,0.32),
-          0 0 14px rgba(255,45,85,0.5);
-      }
-      .tl-node.is-open .tl-dot {
-        transform: scale(1.22);
-        box-shadow:
-          0 0 0 3px rgba(5,5,5,0.92),
-          0 0 0 6px rgba(255,45,85,0.48),
-          0 0 20px rgba(255,45,85,0.7);
+      .tl-node::before {
+        left: 0;
+        right: auto;
+        width: 24px;
+        top: 26px;
       }
       .tl-node:nth-child(odd) .tl-main,
       .tl-node:nth-child(even) .tl-main {
-        grid-column: 2;
+        grid-column: 1;
         grid-row: 1;
         text-align: left;
       }
@@ -700,7 +639,7 @@
       }
       .tl-node:nth-child(odd) .tl-reveal,
       .tl-node:nth-child(even) .tl-reveal {
-        grid-column: 2;
+        grid-column: 1;
         grid-row: 2;
         justify-self: stretch;
         width: 100%;

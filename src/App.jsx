@@ -88,22 +88,11 @@ export default function App() {
               </header>
               <div className="timeline-wrap">
                 <div className="timeline-track" id="timelineTrack">
-                  <svg className="tl-spine" id="tlSpine" aria-hidden="true">
-                    <defs>
-                      <linearGradient id="tlGrad" x1="0" y1="0" x2="0" y2="1">
-                        <stop offset="0%" stopColor="#FF2D55" stopOpacity="0.35" />
-                        <stop offset="18%" stopColor="#FF2D55" />
-                        <stop offset="52%" stopColor="#FF6B9E" />
-                        <stop offset="82%" stopColor="#FFD166" />
-                        <stop offset="100%" stopColor="#FFD166" stopOpacity="0.45" />
-                      </linearGradient>
-                    </defs>
-                    <path className="tl-spine-track" id="tlSpineTrack" d="" />
-                    <path className="tl-spine-progress" id="tlSpineProgress" d="" />
-                    <circle className="tl-spine-head" id="tlSpineHead" r="4.5" cx="0" cy="0" />
-                    <g className="tl-spine-sparks" id="tlSpineSparks" aria-hidden="true"></g>
-                  </svg>
                   <ol className="tl-list">
+                    <span className="tl-rail" id="tlRail" aria-hidden="true">
+                      <span className="tl-rail-base"></span>
+                      <span className="tl-rail-fill" id="tlRailFill"></span>
+                    </span>
                     <li className="tl-node">
                       <div className="tl-main">
                         <button type="button" className="tl-hit" aria-expanded="false" aria-controls="tl-reveal-1">
@@ -113,7 +102,6 @@ export default function App() {
                           <span className="tl-hint">Toque para revelar</span>
                         </button>
                       </div>
-                      <div className="tl-dot-col" aria-hidden="true"><span className="tl-dot"></span></div>
                       <div className="tl-reveal" id="tl-reveal-1">
                         <img className="tl-reveal-media" src="media/timeline-01.jpg" alt="Erick e Thais juntos" loading="lazy" data-lb="img" data-src="media/timeline-01.jpg" data-cap="O começo de tudo" />
                       </div>
@@ -127,7 +115,6 @@ export default function App() {
                           <span className="tl-hint">Toque para revelar</span>
                         </button>
                       </div>
-                      <div className="tl-dot-col" aria-hidden="true"><span className="tl-dot"></span></div>
                       <div className="tl-reveal" id="tl-reveal-2">
                         <img className="tl-reveal-media" src="media/timeline-02.jpg" alt="Thais na gestação do Benício" loading="lazy" data-lb="img" data-src="media/timeline-02.jpg" data-cap="A espera do Benício" />
                       </div>
@@ -141,7 +128,6 @@ export default function App() {
                           <span className="tl-hint">Toque para revelar</span>
                         </button>
                       </div>
-                      <div className="tl-dot-col" aria-hidden="true"><span className="tl-dot"></span></div>
                       <div className="tl-reveal" id="tl-reveal-3">
                         <img className="tl-reveal-media" src="media/timeline-03.jpg" alt="Thais e Benício no chá de bebê" loading="lazy" data-lb="img" data-src="media/timeline-03.jpg" data-cap="Bem-vindo, Benício" />
                       </div>
@@ -155,7 +141,6 @@ export default function App() {
                           <span className="tl-hint">Toque para revelar</span>
                         </button>
                       </div>
-                      <div className="tl-dot-col" aria-hidden="true"><span className="tl-dot"></span></div>
                       <div className="tl-reveal" id="tl-reveal-4">
                         <img className="tl-reveal-media" src="media/timeline-04.jpg" alt="Benício no primeiro aniversário" loading="lazy" data-lb="img" data-src="media/timeline-04.jpg" data-cap="Um ano do nosso amor" />
                       </div>
@@ -169,7 +154,6 @@ export default function App() {
                           <span className="tl-hint">Toque para revelar</span>
                         </button>
                       </div>
-                      <div className="tl-dot-col" aria-hidden="true"><span className="tl-dot"></span></div>
                       <div className="tl-reveal" id="tl-reveal-5">
                         <img className="tl-reveal-media" src="media/timeline-05.jpg" alt="Erick, Thais e Benício" loading="lazy" data-lb="img" data-src="media/timeline-05.jpg" data-cap="Onde a gente está" />
                       </div>
@@ -183,7 +167,6 @@ export default function App() {
                           <span className="tl-hint">Toque para revelar</span>
                         </button>
                       </div>
-                      <div className="tl-dot-col" aria-hidden="true"><span className="tl-dot"></span></div>
                       <div className="tl-reveal" id="tl-reveal-6">
                         <img className="tl-reveal-media" src="media/timeline-06.jpg" alt="Thais no aniversário" loading="lazy" data-lb="img" data-src="media/timeline-06.jpg" data-cap="O seu dia" />
                       </div>
